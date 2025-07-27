@@ -8,8 +8,7 @@ const path = require('path');
 
 
 
-const routes=require('./routes')
-const cors = require('cors');
+const routes=require('./routes');
 const allowedOrigins = ['https://social-website-ty79-91857poev.vercel.app'];
 app.use(cors({
   origin: function(origin, callback){
