@@ -10,9 +10,17 @@ const path = require('path');
 
 const routes=require('./routes')
 const cors = require('cors');
-
+const allowedOrigins = ['https://social-website-ty79-91857poev.vercel.app'];
 app.use(cors({
-  origin: 'https://your-frontend-domain.vercel.app', // replace with your actual frontend URL
+  origin: function(origin, callback){
+    // Allow requests with no origin like mobile apps or curl
+    if(!origin) return callback(null, true);
+    if(allowedOrigins.indexOf(origin) === -1){
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   credentials: true,
 }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
