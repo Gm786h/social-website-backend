@@ -1,55 +1,86 @@
 #!/usr/bin/env node
-
 /**
  * Module dependencies.
  */
-
 var app = require('../app');
 var debug = require('debug')('backend:server');
 var http = require('http');
 const db = require('../models');
 
-
 /**
  * Get port from environment and store in Express.
  */
-
 var port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);
 
-db.sequelize.authenticate()
-  .then(() => console.log('Connection established successfully'))
-  .then(() => db.sequelize.sync({alter:true})) // sync tables alter ture
-  .then(() => {
-    console.log('Tables created/updated successfully');
-    // Start your express app listen here if needed
-  })
-  .catch((err) => {
-    console.error('Unable to connect or sync:', err);
-  });
-
-
-
-
 /**
- * 
- * Create HTTP server.
+ * Database connection and initialization
  */
+async function initializeDatabase() {
+  try {
+    // Test database connection
+    await db.sequelize.authenticate();
+    console.log('✅ Database connection established successfully');
+    
+    // Check if tables exist before syncing
+    const [tables] = await db.sequelize.query("SHOW TABLES");
+    const tableNames = tables.map(table => Object.values(table)[0]);
+    
+    if (tableNames.length === 0) {
+      // Database is empty, safe to sync
+      console.log('📋 Database is empty. Creating tables...');
+      await db.sequelize.sync({ force: false });
+      console.log('✅ Tables created successfully');
+    } else {
+      // Tables exist, check if our required tables exist
+      console.log('📋 Found existing tables:', tableNames.join(', '));
+      
+      const requiredTables = ['Users', 'Posts']; // Add your model names here
+      const missingTables = requiredTables.filter(table => !tableNames.includes(table));
+      
+      if (missingTables.length > 0) {
+        console.log('⚠️ Missing tables:', missingTables.join(', '));
+        console.log('🔨 Creating missing tables only...');
+        
+        // Create only missing tables without altering existing ones
+        await db.sequelize.sync({ force: false, alter: false });
+        console.log('✅ Missing tables created');
+      } else {
+        console.log('✅ All required tables exist. Skipping sync to preserve data.');
+      }
+    }
+  } catch (error) {
+    console.error('❌ Database initialization failed:', error.message);
+    
+    // Don't exit the process, let the app start anyway
+    if (error.message.includes('Duplicate foreign key constraint')) {
+      console.log('⚠️ Foreign key constraint conflict. Database may already be properly configured.');
+    } else if (error.message.includes("doesn't exist")) {
+      console.log('⚠️ Some tables are missing. Please check your database schema.');
+    }
+  }
+}
 
-var server = http.createServer(app);
+// Initialize database and start server
+initializeDatabase().then(() => {
+  /**
+   * Create HTTP server.
+   */
+  var server = http.createServer(app);
 
-/**
- * Listen on provided port, on all network interfaces.
- */
-
-server.listen(port);
-server.on('error', onError);
-server.on('listening', onListening);
+  /**
+   * Listen on provided port, on all network interfaces.
+   */
+  server.listen(port);
+  server.on('error', onError);
+  server.on('listening', onListening);
+  
+  console.log('🚀 Server starting on port', port);
+});
 
 /**
  * Normalize a port into a number, string, or false.
  */
-
 function normalizePort(val) {
   var port = parseInt(val, 10);
 
@@ -69,7 +100,6 @@ function normalizePort(val) {
 /**
  * Event listener for HTTP server "error" event.
  */
-
 function onError(error) {
   if (error.syscall !== 'listen') {
     throw error;
@@ -97,11 +127,11 @@ function onError(error) {
 /**
  * Event listener for HTTP server "listening" event.
  */
-
 function onListening() {
   var addr = server.address();
   var bind = typeof addr === 'string'
     ? 'pipe ' + addr
     : 'port ' + addr.port;
   debug('Listening on ' + bind);
+  console.log('🎉 Server is listening on', bind);
 }
