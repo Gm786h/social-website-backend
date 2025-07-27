@@ -9,7 +9,15 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: false
     }
-  }, { timestamps: true });
-
+  }, { 
+    tableName: 'friends', // Add explicit lowercase table name
+    timestamps: true 
+  });
+  
+  Friend.associate = (models) => {
+    Friend.belongsTo(models.User, { as: 'User1', foreignKey: 'userId1' });
+    Friend.belongsTo(models.User, { as: 'User2', foreignKey: 'userId2' });
+  };
+  
   return Friend;
 };
