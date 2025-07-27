@@ -12,12 +12,6 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     tableName: 'likes',
     timestamps: false // No timestamp columns in database
-    indexes: [
-      {
-        unique: true,
-        fields: ['userId', 'postId'] // Prevent duplicate likes
-      }
-    ]
   });
 
   Like.associate = (models) => {
