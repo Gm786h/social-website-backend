@@ -19,7 +19,7 @@ app.set('port', port);
 
 db.sequelize.authenticate()
   .then(() => console.log('Connection established successfully'))
-  .then(() => db.sequelize.sync()) // sync tables alter ture
+  .then(() => db.sequelize.sync({alter:true})) // sync tables alter ture
   .then(() => {
     console.log('Tables created/updated successfully');
     // Start your express app listen here if needed
