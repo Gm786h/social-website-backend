@@ -50,7 +50,7 @@ async function testConnection() {
     console.log('✅ Database connection established successfully!');
     
     // Test a simple query to ensure everything works
-    const [results] = await sequelize.query('SELECT VERSION() as version, NOW() as current_time');
+    const [results] = await sequelize.query('SELECT VERSION() as version');
     console.log('📊 Database info:', results[0]);
     
     return true;
@@ -87,6 +87,8 @@ async function testConnection() {
   }
 }
 
+// Note: syncDatabase function kept for reference but not used
+// Uncomment and call only if you need to sync new models in the future
 async function syncDatabase() {
   try {
     console.log('🔄 Synchronizing database models...');
@@ -94,10 +96,22 @@ async function syncDatabase() {
     // Import your models here
     // Example: require('./models');
     
-    await sequelize.sync({ alter: false }); // Use { force: true } only in development
+    // Use { alter: true } to modify existing tables without dropping data
+    // Use { force: false } to preserve existing data
+    await sequelize.sync({ 
+      alter: false,  // Don't alter existing tables to avoid constraint conflicts
+      force: false   // Don't drop existing tables
+    });
     console.log('✅ Database models synchronized successfully!');
   } catch (error) {
     console.error('❌ Database sync failed:', error.message);
+    
+    if (error.message.includes('Duplicate foreign key constraint')) {
+      console.log('⚠️ Database already has existing schema. Skipping sync to preserve data.');
+      console.log('💡 If you need to update schema, consider using migrations instead of sync.');
+      return; // Don't throw error, just skip sync
+    }
+    
     throw error;
   }
 }
@@ -105,12 +119,8 @@ async function syncDatabase() {
 // Initialize database connection
 testConnection().then(async (success) => {
   if (success) {
-    try {
-      await syncDatabase();
-      console.log('🚀 Database is ready!');
-    } catch (syncError) {
-      console.error('⚠️ Database connected but sync failed');
-    }
+    console.log('🚀 Database is ready! (Using existing schema)');
+    console.log('💡 Skipping sync to preserve existing data');
   } else {
     console.log('⚠️ Starting server without database connection');
   }
