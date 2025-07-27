@@ -1,137 +1,134 @@
 const { Sequelize } = require('sequelize');
 
-// Option 1: Try with DATABASE_PUBLIC_URL (if available)
-// Check if Railway provides a DATABASE_PUBLIC_URL or DATABASE_URL
-const databaseUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
+// Railway provides these connection URLs
+const DATABASE_PRIVATE_URL = 'mysql://root:XwFhXDTopDYthdwTtglUAtrzGWOtRKfz@mysql-pld_.railway.internal:3306/railway';
+const DATABASE_PUBLIC_URL = 'mysql://root:XwFhXDTopDYthdwTtglUAtrzGWOtRKfz@shortline.proxy.rlwy.net:33534/railway';
 
-let sequelize;
+// Prefer internal URL for better performance and reliability
+const connectionUrl = process.env.DATABASE_PRIVATE_URL || 
+                     process.env.DATABASE_URL || 
+                     DATABASE_PRIVATE_URL; // Use internal URL as fallback
 
-if (databaseUrl) {
-  // Using connection URL (preferred for Railway)
-  sequelize = new Sequelize(databaseUrl, {
-    dialect: 'mysql',
-    logging: console.log, // Enable logging temporarily for debugging
-    
-    pool: {
-      max: 3,          // Reduced from 5 to avoid connection limits
-      min: 0,
-      acquire: 30000,
-      idle: 10000
-    },
-    
-    dialectOptions: {
-      connectTimeout: 30000,    // Reduced timeout
-      supportBigNumbers: true,
-      bigNumberStrings: true
-    },
-    
-    retry: {
-      match: [
-        /PROTOCOL_CONNECTION_LOST/,
-        /SequelizeConnectionError/,
-        /SequelizeConnectionRefusedError/,
-        /SequelizeHostNotFoundError/,
-        /SequelizeHostNotReachableError/,
-        /SequelizeInvalidConnectionError/,
-        /SequelizeConnectionTimedOutError/
-      ],
-      max: 2  // Reduced retry attempts
-    }
-  });
-} else {
-  // Fallback to individual environment variables
-  sequelize = new Sequelize(
-    process.env.DB_NAME,
-    process.env.DB_USER,
-    process.env.DB_PASSWORD,
-    {
-      host: process.env.DB_HOST,
-      port: process.env.DB_PORT,
-      dialect: 'mysql',
-      logging: console.log, // Enable logging temporarily
-      
-      pool: {
-        max: 3,
-        min: 0,
-        acquire: 30000,
-        idle: 10000
-      },
-      
-      dialectOptions: {
-        connectTimeout: 30000,
-        supportBigNumbers: true,
-        bigNumberStrings: true
-      },
-      
-      retry: {
-        match: [
-          /PROTOCOL_CONNECTION_LOST/,
-          /SequelizeConnectionError/,
-          /SequelizeConnectionRefusedError/,
-          /SequelizeHostNotFoundError/,
-          /SequelizeHostNotReachableError/,
-          /SequelizeInvalidConnectionError/,
-          /SequelizeConnectionTimedOutError/
-        ],
-        max: 2
-      }
-    }
-  );
-}
+console.log('🔌 Using database connection URL:', connectionUrl.replace(/:[^:]*@/, ':****@')); // Hide password in logs
+
+const sequelize = new Sequelize(connectionUrl, {
+  dialect: 'mysql',
+  logging: false, // Set to console.log if you want to see SQL queries
+  
+  pool: {
+    max: 5,          // Maximum number of connections
+    min: 0,          // Minimum number of connections
+    acquire: 30000,  // Maximum time to get connection (30s)
+    idle: 10000      // Maximum idle time before releasing connection (10s)
+  },
+  
+  dialectOptions: {
+    connectTimeout: 30000,    // Connection timeout (30s)
+    supportBigNumbers: true,
+    bigNumberStrings: true
+  },
+  
+  retry: {
+    match: [
+      /PROTOCOL_CONNECTION_LOST/,
+      /SequelizeConnectionError/,
+      /SequelizeConnectionRefusedError/,
+      /SequelizeHostNotFoundError/,
+      /SequelizeHostNotReachableError/,
+      /SequelizeInvalidConnectionError/,
+      /SequelizeConnectionTimedOutError/
+    ],
+    max: 3
+  }
+});
 
 async function testConnection() {
   try {
-    console.log('Testing database connection...');
-    console.log('Host:', process.env.DB_HOST);
-    console.log('Port:', process.env.DB_PORT);
-    console.log('Database:', process.env.DB_NAME);
-    console.log('User:', process.env.DB_USER);
+    console.log('🔍 Testing database connection...');
     
     await sequelize.authenticate();
-    console.log('✅ Connection has been established successfully.');
+    console.log('✅ Database connection established successfully!');
     
-    // Test a simple query
-    const result = await sequelize.query('SELECT 1 as test');
-    console.log('✅ Test query successful:', result);
+    // Test a simple query to ensure everything works
+    const [results] = await sequelize.query('SELECT VERSION() as version, NOW() as current_time');
+    console.log('📊 Database info:', results[0]);
     
+    return true;
   } catch (error) {
-    console.error('❌ Unable to connect to the database:', error.message);
-    console.error('Error code:', error.original?.code);
-    console.error('Error details:', error.original);
+    console.error('❌ Database connection failed:', error.message);
     
-    // If connection fails, try to get more info about the database service
-    console.log('\n🔍 Troubleshooting info:');
-    console.log('- Check if your Railway MySQL service is running');
-    console.log('- Verify environment variables are correct');
-    console.log('- Check if you have hit connection/resource limits');
-    console.log('- Try restarting the database service in Railway');
+    // If internal URL fails, try public URL as fallback
+    if (connectionUrl.includes('railway.internal')) {
+      console.log('🔄 Internal connection failed, trying public URL...');
+      try {
+        const publicSequelize = new Sequelize(DATABASE_PUBLIC_URL, {
+          dialect: 'mysql',
+          logging: false,
+          pool: { max: 3, min: 0, acquire: 30000, idle: 10000 },
+          dialectOptions: { connectTimeout: 30000, supportBigNumbers: true, bigNumberStrings: true }
+        });
+        
+        await publicSequelize.authenticate();
+        console.log('✅ Public URL connection successful! Consider updating your environment variables.');
+        await publicSequelize.close();
+        return false; // Still return false so you know to update config
+      } catch (publicError) {
+        console.error('❌ Public URL also failed:', publicError.message);
+      }
+    }
+    
+    console.log('\n💡 Troubleshooting tips:');
+    console.log('1. Check if MySQL service is running in Railway dashboard');
+    console.log('2. Verify the connection URLs are correct');
+    console.log('3. Try restarting the MySQL service');
+    console.log('4. Check for resource limits or billing issues');
+    
+    return false;
   }
 }
 
-// Test connection on startup
-testConnection();
+async function syncDatabase() {
+  try {
+    console.log('🔄 Synchronizing database models...');
+    
+    // Import your models here
+    // Example: require('./models');
+    
+    await sequelize.sync({ alter: false }); // Use { force: true } only in development
+    console.log('✅ Database models synchronized successfully!');
+  } catch (error) {
+    console.error('❌ Database sync failed:', error.message);
+    throw error;
+  }
+}
 
-// Graceful shutdown handlers
-process.on('SIGINT', async () => {
-  console.log('🔄 Closing database connection...');
+// Initialize database connection
+testConnection().then(async (success) => {
+  if (success) {
+    try {
+      await syncDatabase();
+      console.log('🚀 Database is ready!');
+    } catch (syncError) {
+      console.error('⚠️ Database connected but sync failed');
+    }
+  } else {
+    console.log('⚠️ Starting server without database connection');
+  }
+});
+
+// Graceful shutdown
+const gracefulShutdown = async (signal) => {
+  console.log(`🔄 Received ${signal}, closing database connection...`);
   try {
     await sequelize.close();
     console.log('✅ Database connection closed successfully');
   } catch (error) {
-    console.error('❌ Error closing database connection:', error);
+    console.error('❌ Error closing database connection:', error.message);
   }
   process.exit(0);
-});
+};
 
-process.on('SIGTERM', async () => {
-  console.log('🔄 Closing database connection...');
-  try {
-    await sequelize.close();
-    console.log('✅ Database connection closed successfully');
-  } catch (error) {
-    console.error('❌ Error closing database connection:', error);
-  }
-  process.exit(0);
-});
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 module.exports = { sequelize, Sequelize };
