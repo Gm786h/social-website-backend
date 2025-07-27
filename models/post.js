@@ -1,5 +1,4 @@
 'use strict';
-
 module.exports = (sequelize, DataTypes) => {
   const Post = sequelize.define('Post', {
     content: {
@@ -7,9 +6,14 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false
     },
     image: {
-      type:DataTypes.STRING,
+      type: DataTypes.STRING,
       allowNull: true
     }
+  }, {
+    // Add this options object to specify the correct table name
+    tableName: 'posts', // This tells Sequelize to use the 'posts' table (lowercase)
+    timestamps: true,   // Assumes you have createdAt/updatedAt columns
+    underscored: false  // Keeps camelCase column names
   });
 
   Post.associate = (models) => {
@@ -17,6 +21,6 @@ module.exports = (sequelize, DataTypes) => {
     Post.hasMany(models.Comment, { foreignKey: 'postId' });
     Post.hasMany(models.Like, { foreignKey: 'postId' });
   };
-
+  
   return Post;
 };
