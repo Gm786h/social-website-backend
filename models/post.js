@@ -8,12 +8,15 @@ module.exports = (sequelize, DataTypes) => {
     image: {
       type: DataTypes.STRING,
       allowNull: true
+    },
+    userId: {  // ← THIS WAS MISSING!
+      type: DataTypes.INTEGER,
+      allowNull: false
     }
   }, {
-    // Add this options object to specify the correct table name
-    tableName: 'posts', // This tells Sequelize to use the 'posts' table (lowercase)
-    timestamps: true,   // Assumes you have createdAt/updatedAt columns
-    underscored: false  // Keeps camelCase column names
+    tableName: 'posts',
+    timestamps: true,
+    underscored: false
   });
 
   Post.associate = (models) => {
