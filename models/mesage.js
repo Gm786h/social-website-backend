@@ -18,13 +18,13 @@ module.exports = (sequelize, DataTypes) => {
     }
   }, {
     updatedAt: false,
-    tableName: 'Messages'
+    tableName: 'messages' // Changed from 'Messages' to 'messages' (lowercase)
   });
-
+  
   Message.associate = (models) => {
     Message.belongsTo(models.User, { as: 'Sender', foreignKey: 'senderId' });
     Message.belongsTo(models.User, { as: 'Receiver', foreignKey: 'receiverId' });
   };
-
+  
   return Message;
 };
