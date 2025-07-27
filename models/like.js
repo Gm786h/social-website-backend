@@ -10,9 +10,8 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false
     }
   }, {
-   tableName: 'likes',
-    timestamps: true,
-    updatedAt: false, // Only track createdAt for likes
+    tableName: 'likes',
+    timestamps: false // No timestamp columns in database
     indexes: [
       {
         unique: true,
