@@ -1,6 +1,7 @@
+// FriendRequest Model
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const FriendRequest = sequelize.define('friendRequest', {
+  const FriendRequest = sequelize.define('FriendRequest', { // Fixed model name capitalization
     senderId: {
       type: DataTypes.INTEGER,
       allowNull: false
@@ -13,14 +14,16 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.ENUM('pending', 'accepted', 'cancel'),
       defaultValue: 'pending'
     }
-  }, { timestamps: true });
+  }, { 
+    tableName: 'friendrequests', // Added lowercase table name
+    timestamps: true 
+  });
 
   FriendRequest.associate = (models) => {
     FriendRequest.belongsTo(models.User, {
       foreignKey: 'senderId',
       as: 'Sender'
     });
-
     FriendRequest.belongsTo(models.User, {
       foreignKey: 'receiverId',
       as: 'Receiver'
