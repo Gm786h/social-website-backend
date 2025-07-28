@@ -10,11 +10,9 @@ const path = require('path');
 
 const routes=require('./routes');
 const allowedOrigins = [
-  'http://localhost:5173',
-  'https://your-frontend-app-domain.com',
-  'https://social-website-ty79.vercel.app'
+  'https://social-website-ty79.vercel.app',
+  'http://localhost:5173' // optional, for local testing
 ];
-
 
 const corsOptions = {
   origin: function (origin, callback) {
