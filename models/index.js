@@ -8,7 +8,7 @@ const Comment = require('./comment')(sequelize, Sequelize.DataTypes);
 const Like = require('./like')(sequelize, Sequelize.DataTypes);
 const Friend = require('./friend')(sequelize, Sequelize.DataTypes);
 const FriendRequest=require('./friendRequest')(sequelize, Sequelize.DataTypes);
-const Message=require('./mesage')(sequelize, Sequelize.DataTypes);
+const Message=require('./message')(sequelize, Sequelize.DataTypes);
 
 
 const db = {

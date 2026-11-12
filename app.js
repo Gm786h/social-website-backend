@@ -1,34 +1,35 @@
-require('dotenv').config();
-const cors = require('cors');
 const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
 const logger = require('morgan');
-const app = express();
-const db = require('./models');
 const path = require('path');
 
+const { corsOrigins, nodeEnv } = require('./config/env');
+const routes = require('./routes');
+const { notFound, errorHandler } = require('./middleware/errorHandler');
 
+const app = express();
 
-const routes=require('./routes');
-const allowedOrigins = [
-  'https://social-website-ty79.vercel.app',
-  'http://localhost:5173' // optional, for local testing
-];
-
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  }
-};
-
-app.use(cors(corsOptions));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use(logger('dev'));
-app.use(express.json());
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || corsOrigins.includes(origin)) return callback(null, true);
+      const err = new Error('Not allowed by CORS');
+      err.status = 403;
+      return callback(err);
+    },
+  })
+);
+if (nodeEnv !== 'test') app.use(logger(nodeEnv === 'production' ? 'combined' : 'dev'));
+app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false }));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.use('/api', routes);
+
+app.use(notFound);
+app.use(errorHandler);
 
 module.exports = app;
