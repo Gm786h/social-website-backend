@@ -1,67 +1,50 @@
-const { User,Post,Comment,Like } = require('../models');
+const { User, Post, Comment, Like } = require('../models');
+const { getPagination, toPositiveInt } = require('../utils/pagination');
 
-exports.getProfile = async (req, res) => {
+exports.getProfile = async (req, res, next) => {
   try {
     const user = await User.findByPk(req.user.id, {
-      attributes: ['id', 'username', 'email']
+      attributes: ['id', 'username', 'email', 'profileImageUrl'],
     });
-    res.json(user);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    return res.json(user);
+  } catch (err) {
+    return next(err);
   }
 };
 
-
-exports.getOneProfile = async (req, res) => {
+// Returns a user's profile with their paginated posts.
+// Defaults to the logged-in user; pass ?userId=<id> to view someone else.
+exports.getOneProfile = async (req, res, next) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const perPage = parseInt(req.query.limit) || 10;
+    const userId = toPositiveInt(req.query.userId, req.user.id);
+    const { page, limit, offset } = getPagination(req.query, 10);
 
-    const totalPosts = await Post.count({
-      where: { userId: req.user.id }
-    });
-
-     const pageCount = Math.ceil(totalPosts / perPage);
-     const limit =perPage;
-     const offset=(page-1)*perPage;
-    const user = await User.findByPk(req.user.id, {
-      attributes: ['id', 'username'],
+    const user = await User.findByPk(userId, {
+      attributes: ['id', 'username', 'profileImageUrl'],
       include: [
         {
           model: Post,
           separate: true,
           limit,
           offset,
-          order: [
-            ['createdAt', 'ASC']
-          ],
+          order: [['createdAt', 'ASC']],
           include: [
-            {
-              model: Comment,
-              include: [
-                { model: User, 
-                  attributes: ['username'] 
-
-                }]
-            },
-            {
-              model: Like,
-              include: [
-                { model: User, attributes: ['username'] 
-
-                }]
-            }
-          ]
-        }
-      ]
+            { model: Comment, include: [{ model: User, attributes: ['id', 'username'] }] },
+            { model: Like, include: [{ model: User, attributes: ['id', 'username'] }] },
+          ],
+        },
+      ],
     });
+    if (!user) return res.status(404).json({ error: 'User not found' });
 
-   const plainUser = user.toJSON();
-plainUser.page = page;
-plainUser.totalpages = pageCount;
-// const postPerPage = Math.min(page * limit, totalPosts);
-  res.json(plainUser);
+    const totalPosts = await Post.count({ where: { userId } });
+    const plainUser = user.toJSON();
+    plainUser.page = page;
+    plainUser.totalpages = Math.ceil(totalPosts / limit);
+    plainUser.totalPosts = totalPosts;
+    return res.json(plainUser);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return next(err);
   }
 };

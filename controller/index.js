@@ -1,14 +1,11 @@
-// controllers/index.js
-
 const authController = require('./authController');
 const postController = require('./postController');
 const userController = require('./userController');
-const commentController=require('./commentController');
-const likeController=require('./likeController');
-const friendController=require('./friendController');
-const frController=require('./FriendRequestController')
-const messageController=require('./messageController.')
-const profileController=require('./profleController')
+const commentController = require('./commentController');
+const likeController = require('./likeController');
+const frController = require('./FriendRequestController');
+const messageController = require('./messageController');
+const profileController = require('./profileController');
 
 module.exports = {
   authController,
@@ -16,9 +13,7 @@ module.exports = {
   userController,
   commentController,
   likeController,
-  friendController,
-  messageController,
   frController,
-  profileController
-
+  messageController,
+  profileController,
 };

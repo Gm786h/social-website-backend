@@ -1,89 +1,55 @@
 const { Post, User, Comment, Like } = require('../models');
+const { getPagination } = require('../utils/pagination');
 
-exports.createPost = async (req, res) => {
+const postIncludes = [
+  { model: User, attributes: ['id', 'username', 'profileImageUrl'] },
+  { model: Comment, include: [{ model: User, attributes: ['id', 'username'] }] },
+  { model: Like, include: [{ model: User, attributes: ['id', 'username'] }] },
+];
+
+exports.createPost = async (req, res, next) => {
   try {
-    const { content } = req.body;
-    const image = req.file ? req.file.path : null;
+    const content = (req.body.content || '').trim();
+    if (!content) return res.status(400).json({ error: 'Post content is required' });
 
-    const post = await Post.create({ content, userId: req.user.id ,image});
-    res.status(201).json(post);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const image = req.file ? req.file.path : null;
+    const post = await Post.create({ content, userId: req.user.id, image });
+    return res.status(201).json(post);
+  } catch (err) {
+    return next(err);
   }
 };
 
-exports.getAllPosts = async (req, res) => {
+exports.getAllPosts = async (req, res, next) => {
   try {
-    const page=parseInt(req.query.page)|| 1;
-    const limit=parseInt(req.query.limit)||3;
-    const offset=(page-1)*limit;
+    const { page, limit, offset } = getPagination(req.query, 3);
 
-   const totalPosts = await Post.count();
- const totalPages = Math.ceil(totalPosts / limit);
+    const totalPosts = await Post.count();
     const posts = await Post.findAll({
-      include: [
-        {
-          model: User,
-          attributes: ['username', 'profileImageUrl']
-        },
-        {
-          model: Comment,
-          include: [{ model: User, attributes: ['username'] }]
-        },
-        {
-          model: Like,
-          include: [{ model: User, attributes: ['username'] }]
-        }
-      ],
+      include: postIncludes,
       limit,
       offset,
-      order: [['createdAt', 'DESC']]
+      order: [['createdAt', 'DESC']],
     });
 
-    res.status(200).json({ 
-     currentPage: page,
-      totalPages,
+    return res.json({
+      currentPage: page,
+      totalPages: Math.ceil(totalPosts / limit),
       totalPosts,
-      perPage: limit,Posts: posts });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
+      perPage: limit,
+      Posts: posts,
+    });
+  } catch (err) {
+    return next(err);
   }
 };
 
-
-exports.getPostById = async (req, res) => {
+exports.getPostById = async (req, res, next) => {
   try {
-    const post = await Post.findOne({
-  where: { id: req.params.postId },
-  include: [
-    {
-      model: User,
-      attributes: ['username','profileImageUrl'] 
-    },
-    {
-      model: Comment,
-      include: [{
-        model: User,
-        attributes: ['username'] 
-      }]
-    },
-    {
-      model: Like,
-      include: [{
-        model: User,
-        attributes: ['username'] 
-      }]
-    }
-  ]
-});
-    if (!post) {
-      return res.status(404).json({ message: 'Post not found' });
-    }
-
-    res.json(post);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const post = await Post.findOne({ where: { id: req.params.postId }, include: postIncludes });
+    if (!post) return res.status(404).json({ message: 'Post not found' });
+    return res.json(post);
+  } catch (err) {
+    return next(err);
   }
 };
-
